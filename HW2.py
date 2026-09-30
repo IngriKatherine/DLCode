@@ -1,6 +1,34 @@
 import numpy as np
 import sympy as sp
+import matplotlib.pyplot as plt
 
+## Eigenvalues and Eigenvectors
+m1=np.array([[2, 0],[0, 5]])
+m2=np.array([[5, 1],[4, 5]])
+m3=np.array([[3, 5],[3, 1]])
+
+eigenvalues, eigenvectors = np.linalg.eig(m3)
+print("Eigenvalues:")
+print(np.real_if_close(eigenvalues))
+print("\nEigenvectors:")
+print(np.real_if_close(eigenvectors))
+
+### E.1
+B=np.array([[1, 1],[1, -1]], dtype=complex)
+A_std = np.array([[1, -1], [1,  1]], dtype=complex)
+A_prime = np.linalg.inv(B) @ A_std @ B
+print(np.round(A_prime, 10))
+
+#Eigenvalues of A prime
+eigvals, Z = np.linalg.eig(A_prime)
+print("eigenvalues =", eigvals, "\n")
+print("eigenvectors =", Z, "\n")
+
+## A_prime_z
+A_prime_z = np.linalg.inv(Z) @ A_prime @ Z
+print(np.round(A_prime_z, 10))
+
+### Part 1
 v1 = np.array([-1, 1, 0])
 v2 = np.array([1, 1, -2])
 v3 = np.array([1, 1, 0])
@@ -108,3 +136,77 @@ print(f"{'i.':<6}{'Yes':<15}{3}")
 print(f"{'ii.':<6}{'Yes':<15}{3}")
 print(f"{'iii.':<6}{'Yes':<15}{2}")
 print(f"{'iv.':<6}{'No':<15}{2}")
+
+# ----------------------------------------------------------------------
+# Part i: symbolic gradient
+# ----------------------------------------------------------------------
+x, y = sp.symbols('x y')
+f_sym = 2 * x * y + x ** 2 + y
+
+df_dx = sp.diff(f_sym, x)
+df_dy = sp.diff(f_sym, y)
+
+print("f(x, y)       =", f_sym)
+print("df/dx         =", df_dx)
+print("df/dy         =", df_dy)
+print("grad f(x, y)  = (%s, %s)" % (df_dx, df_dy))
+print()
+
+# Turn the symbolic derivatives into fast numeric functions
+grad_x_func = sp.lambdify((x, y), df_dx, 'numpy')
+grad_y_func = sp.lambdify((x, y), df_dy, 'numpy')
+f_func = sp.lambdify((x, y), f_sym, 'numpy')
+
+# ----------------------------------------------------------------------
+# Part ii: evaluate the gradient at the three points
+# ----------------------------------------------------------------------
+points = [(1, 1), (0, -1), (0, 0)]
+
+print("Gradient at requested points:")
+gradients = {}
+for (px, py) in points:
+    gx = grad_x_func(px, py)
+    gy = grad_y_func(px, py)
+    gradients[(px, py)] = (gx, gy)
+    print(f"  grad f({px:>2}, {py:>2}) = ({gx}, {gy})")
+print()
+
+# ----------------------------------------------------------------------
+# Plot the surface
+# ----------------------------------------------------------------------
+X = np.linspace(-2, 2, 100)
+Y = np.linspace(-2, 2, 100)
+X, Y = np.meshgrid(X, Y)
+Z = f_func(X, Y)
+
+fig = plt.figure(figsize=(10, 8))
+ax = fig.add_subplot(111, projection='3d')
+
+ax.plot_surface(X, Y, Z, cmap='viridis', alpha=0.6, edgecolor='none')
+
+# Plot each point on the surface and its gradient as a 3D arrow.
+# We show the gradient (which lives in the x-y plane) as a horizontal
+# arrow starting at the point on the surface, scaled for visibility.
+scale = 0.3
+for (px, py) in points:
+    pz = f_func(px, py)
+    gx, gy = gradients[(px, py)]
+
+    # point on surface
+    ax.scatter(px, py, pz, color='red', s=50)
+
+    # gradient arrow (projected in x-y directions), drawn at surface height
+    ax.quiver(px, py, pz,
+              gx * scale, gy * scale, 0,
+              color='blue', linewidth=2, arrow_length_ratio=0.2)
+
+    ax.text(px, py, pz, f'  ({px},{py})\n  grad=({gx},{gy})', color='black', fontsize=9)
+
+ax.set_xlabel('x')
+ax.set_ylabel('y')
+ax.set_zlabel('f(x, y)')
+ax.set_title('f(x, y) = 2xy + x^2 + y  with gradient vectors')
+
+plt.tight_layout()
+plt.savefig('gradient_plot.png', dpi=150)
+plt.show()
